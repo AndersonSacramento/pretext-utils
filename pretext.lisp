@@ -9,7 +9,7 @@
   (format nil "~A" obj))
 
 
-(defun test-regexp-in-file-lines (f-path regexp &key (line-printp T)
+(defun test-regexp-in-file-lines (f-path regexp &key (line-print-p T)
                                                      (start-at 0)
                                                      (external-format :utf-8))
   "Test the application of regexp in file lines"
@@ -23,7 +23,7 @@
                            (ppcre:register-groups-bind (finding) 
                                (regexp line)
                              finding))
-        (when line-printp
+        (when line-print-p
           (print line))
         (print rutils:it)
         (unless (y-or-n-p "Continue?")
