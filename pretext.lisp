@@ -10,8 +10,8 @@
 
 
 (defun test-regexp-in-file-lines (f-path regexp &key (line-printp T)
-                                                    (start-at 0)
-                                                    (external-format :utf-8))
+                                                     (start-at 0)
+                                                     (external-format :utf-8))
   "Test the application of regexp in file lines"
   (with-open-file (stream f-path
                           :external-format external-format)
@@ -30,18 +30,17 @@
           (return))))))
 
 
-
-
-(defun transfer-in-lines-to-out (in-path out-path &key (i-external-format :utf-8)
-                                                       (o-external-format :utf-8)
+(defun transfer-in-lines-to-out (in-path out-path &key (in-external-format  :utf-8)
+                                                       (out-external-format :utf-8)
                                                        (regexp "(.*)")
+                                                       (quotep nil)
                                                        (fn-validate #'(lambda (it) it)))
   "Read i-path text file content and transfer to o-path
   by applying regexp filter and fn-validate function.
   Example:
   (transfer-in-lines-to-out '/tmp/in.txt'
                             '/tmp/out.txt'
-                            :i-external-format :iso-8859-1
+                            :in-external-format :iso-8859-1
                             :regexp '<s> (.* [\.|\\?|!]) </s>'
                             :fn-validate #'(lambda (it)
                                              (> (length (ppcre:split '\\s+' it)) 3)))"
@@ -50,40 +49,48 @@
                            :if-exists :supersede
                            :external-format o-external-format)
     (with-open-file (istream in-path
-                            :external-format i-external-format)
+                             :external-format i-external-format)
       (do ((line (read-line istream nil)
                  (read-line istream nil)))
           ((null line))
         (rutils:if-it (ppcre:register-groups-bind (finding)
-                          (regexp line)
-                        finding)
+                                                  (regexp line)
+                                                  finding)
                       (when (funcall fn-validate rutils:it)
-                       (write-sequence (format nil "~s~%" rutils:it)
-                                       ostream)))))))
+                        (cond (quotep
+                               (format ostream "~S~%" rutils:it))
+                              (t (format ostream "~A~%" rutils:it)))))))))
 
 
-(defun partition-in-file-to-outs (in-path template-out-path &key (number-line 10000)
-                                                                 (replacement ":i")
-                                                                 (i-external-format :utf-8)
-                                                                 (o-external-format :utf-8))
-  "Partition of in-path into template-out-path files.
+(defun partition-in-file-to-outs (in-path out-path-template &key (number-lines 10000)
+                                                                 (file-n-pattern ":i")
+                                                                 (in-external-format  :utf-8)
+                                                                 (out-external-format :utf-8)
+                                                                 (quotep nil))
+  "Partition of in-path into out-path-template files.
   Divides the input file lines between the files generated with 
-  an upper limit of the :number-of-line"
+  an upper limit of the number of lines (:number-lines).
+  Example:
+  (partition-in-file-to-outs '/tmp/in.txt'
+                             '/tmp/out-:i.txt'
+                             :upper-number-lines 500"
   (let ((i 0))
-    (with-open-file (stream in-path
-                            :external-format i-external-format)
+    (with-open-file (istream in-path
+                             :external-format in-external-format)
       (loop
-         do (let ((out (open (ppcre:regex-replace replacement
-                                                  template-out-path
-                                                  (str i))
-                             :direction :output
-                             :if-exists :supersede
-                             :external-format o-external-format)))
-              (dotimes (i number-line) 
-                (rutils:if-it (read-line stream nil)                
-                              (write-line rutils:it out)
-                              (progn
-                                (close out)
-                                (return-from partition-in-file-to-outs))))
-              (close out)
-              (incf i))))))
+        do (let ((ostream (open (ppcre:regex-replace file-n-pattern
+                                                     out-path-template
+                                                     (str i))
+                                :direction :output
+                                :if-exists :supersede
+                                :external-format out-external-format)))
+             (dotimes (i number-lines) 
+               (rutils:if-it (read-line istream nil)                
+                             (cond (quotep
+                                    (format ostream "~S~%" rutils:it))
+                                   (t (format ostream "~A~%" rutils:it)))
+                             (progn
+                               (close ostream)
+                               (return-from partition-in-file-to-outs))))
+             (close ostream)
+             (incf i))))))
