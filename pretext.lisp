@@ -35,7 +35,7 @@
                                                        (regexp "(.*)")
                                                        (quotep nil)
                                                        (fn-validate #'(lambda (it) it)))
-  "Read i-path text file content and transfer to o-path
+  "Read in-path text file content and transfer to out-path
   by applying regexp filter and fn-validate function.
   Example:
   (transfer-in-lines-to-out '/tmp/in.txt'
@@ -73,7 +73,7 @@
   Example:
   (partition-in-file-to-outs '/tmp/in.txt'
                              '/tmp/out-:i.txt'
-                             :upper-number-lines 500"
+                             :number-lines 500"
   (let ((i 0))
     (with-open-file (istream in-path
                              :external-format in-external-format)
